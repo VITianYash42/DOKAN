@@ -3,10 +3,32 @@ import csv
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
+import sys
+from dotenv import load_dotenv
+
+# --- SECURITY: 12-Factor Configuration Loading ---
+# Load environment variables from .env file
+load_dotenv()
+
+# --- SECURITY: Fail-Safe Assertion Layer ---
+# This ensures the app CRASHES immediately if critical secrets are missing
+# preventing "silent failures" in production.
+required_secrets = ['SECRET_KEY', 'DATABASE_URL']
+for secret in required_secrets:
+    if not os.getenv(secret):
+        sys.stderr.write(f"CRITICAL SECURITY ERROR: Missing environment variable '{secret}'.\n")
+        sys.stderr.write("Application refusal to start: Credential leakage prevention.\n")
+        sys.exit(1)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+
+# Inject the Secret Key securely (No longer hardcoded!)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+# Inject the Database URL securely
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+
 db = SQLAlchemy(app)
 
 CSV_FILE = 'data/inventory.csv'
