@@ -42,6 +42,7 @@ def recommend_products(product_name):
 
     # 6. Find the index of the product matching the input name
     # We use lowercase for case-insensitive matching
+    # Create a mapping of Name -> Index
     indices = pd.Series(df.index, index=df['name'].str.lower()).drop_duplicates()
     
     product_name_lower = product_name.lower()

@@ -43,7 +43,9 @@ def predict_category(product_name):
     model.fit(X_vectorized, y)
 
     # 5. Predict
-    input_vector = vectorizer.transform([product_name])
-    prediction = model.predict(input_vector)
-
-    return prediction[0]
+    try:
+        input_vector = vectorizer.transform([product_name])
+        prediction = model.predict(input_vector)
+        return prediction[0]
+    except:
+        return "General"
