@@ -91,36 +91,47 @@ def inventory():
     items = read_csv(CSV_FILE)
 
     if request.method == 'POST':
-        # Validation Logic
         try:
-            stock = int(request.form['stock'])
-            price = float(request.form['price'])
-            if stock < 0 or price < 0:
-                return "Error: Stock and Price cannot be negative! <a href='/inventory'>Go Back</a>"
-        except ValueError:
-            return "Error: Invalid number format!"
+            # Validate all inventory item fields
+            validated_item = validate_inventory_item(request.form)
 
-        item = {
-            'id': request.form['id'],
-            'name': request.form['name'],
-            'category': request.form['category'],
-            'stock': stock,
-            'price': price,
-            'expiry_date': request.form['expiry_date'],
-            'supplier': request.form['supplier']
-        }
+            # Sanitize values for CSV storage
+            item = {
+                'id': sanitize_for_csv(validated_item['id']),
+                'name': sanitize_for_csv(validated_item['name']),
+                'category': sanitize_for_csv(validated_item['category']),
+                'stock': sanitize_for_csv(validated_item['stock']),
+                'price': sanitize_for_csv(validated_item['price']),
+                'expiry_date': sanitize_for_csv(validated_item['expiry_date']),
+                'supplier': sanitize_for_csv(validated_item['supplier'])
+            }
 
-        # Edit/Update Logic
-        data = read_csv(CSV_FILE)
-        for i, row in enumerate(data):
-            if row['id'] == item['id']:
-                data[i] = item  # Update existing
-                break
-        else:
-            data.append(item)   # Add new
-        
-        write_csv(CSV_FILE, data)
-        return redirect(url_for('inventory'))
+            # Edit/Update Logic
+            data = read_csv(CSV_FILE)
+            updated = False
+            for i, row in enumerate(data):
+                if row['id'] == item['id']:
+                    data[i] = item  # Update existing
+                    updated = True
+                    break
+
+            if not updated:
+                data.append(item)  # Add new
+                flash(f"Product '{item['name']}' added successfully!", "success")
+            else:
+                flash(f"Product '{item['name']}' updated successfully!", "success")
+
+            write_csv(CSV_FILE, data)
+            return redirect(url_for('inventory'))
+
+        except ValidationError as e:
+            flash(e.message, "error")
+            items = read_csv(CSV_FILE)
+            return render_template('inventory.html', items=items, edit_item=None)
+        except Exception as e:
+            flash("An unexpected error occurred. Please try again.", "error")
+            items = read_csv(CSV_FILE)
+            return render_template('inventory.html', items=items, edit_item=None)
 
     # Render with empty edit_item for normal view
     return render_template('inventory.html', items=items, edit_item=None)
