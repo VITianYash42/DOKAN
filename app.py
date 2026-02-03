@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash
 import csv
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from validators import ValidationError, validate_inventory_item, sanitize_for_csv
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -154,12 +155,58 @@ def delete_item(item_id):
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return "Dashboard Placeholder"  # Simplified for now
+    items = read_csv(CSV_FILE)
+    
+    # Initialize with empty default values
+    sales_forecast = {}
+    stockout_predictions = []
+    suggestions = []
+    
+    # Try to load AI insights (optional - graceful degradation if dependencies missing)
+    try:
+        from ai.sales_forecast import predict_sales
+        sales_forecast = predict_sales(items)
+    except (ImportError, Exception) as e:
+        flash(f"Sales forecast unavailable: {str(e)}", "warning")
+    
+    try:
+        from ai.stockout_predictor import predict_stockout
+        stockout_predictions = predict_stockout(items)
+    except (ImportError, Exception) as e:
+        flash(f"Stockout predictions unavailable: {str(e)}", "warning")
+    
+    try:
+        from ai.recommender import recommend_products
+        suggestions = recommend_products(items)
+    except (ImportError, Exception) as e:
+        flash(f"Product recommendations unavailable: {str(e)}", "warning")
+    
+    return render_template('dashboard.html', 
+                         items=items,
+                         sales_forecast=sales_forecast,
+                         stockout_predictions=stockout_predictions,
+                         suggestions=suggestions)
 
 @app.route('/billing')
 @login_required
 def billing():
-    return "Billing Placeholder"
+    return render_template('billing.html')
+
+@app.route('/feedback', methods=['GET', 'POST'])
+@login_required
+def feedback():
+    sentiment = None
+    if request.method == 'POST':
+        feedback_text = request.form.get('feedback', '').strip()
+        if feedback_text:
+            try:
+                from ai.sentiment_analyzer import analyze_feedback
+                sentiment = analyze_feedback(feedback_text)
+            except (ImportError, Exception) as e:
+                flash(f"Sentiment analysis unavailable: {str(e)}", "warning")
+                sentiment = "Unable to analyze (missing dependencies)"
+    
+    return render_template('feedback.html', sentiment=sentiment)
 
 if __name__ == '__main__':
     with app.app_context():
