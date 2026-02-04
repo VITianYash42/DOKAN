@@ -2,57 +2,57 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Dokan Billing with Inventory</title>
+    <title>Billing - Dokan</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #fffbe9; }
-        .header { background: #ffd600; padding: 30px 0 10px 0; text-align: center; color: #444; font-size: 2em; font-weight: bold; letter-spacing: 1px; }
-        .container { max-width: 650px; margin: 40px auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 16px #ffd60044; padding: 30px 30px 20px 30px; }
-        .input-row { display: flex; gap: 10px; margin-bottom: 15px; }
-        .input-row input, .input-row select { flex: 1; padding: 8px; border: 1px solid #ffe082; border-radius: 5px; font-size: 1em; }
-        .input-row button { background: #ffd600; color: #444; border: none; border-radius: 5px; padding: 8px 18px; font-size: 1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        .input-row button:hover { background: #f9a825; color: #fff; }
-        .bill-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-        .bill-table th, .bill-table td { border: 1px solid #ffe082; padding: 7px 6px; text-align: center; }
-        .bill-table th { background: #fffde7; color: #444; font-weight: 600; }
-        .bill-table td input, .bill-table td select { width: 90%; padding: 3px; border: 1px solid #ffe082; border-radius: 3px; text-align: center; }
-        .remove-btn { background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 5px 10px; cursor: pointer; font-size: 1em; }
-        .remove-btn:hover { background: #c0392b; }
-        .total-row { text-align: right; font-weight: bold; font-size: 1.1em; color: #222; margin-bottom: 10px; }
+        body { font-family: sans-serif; padding: 20px; }
+        .form-control { margin-bottom: 10px; padding: 8px; width: 200px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .btn-primary { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .btn-danger { padding: 5px 10px; background: red; color: white; border: none; cursor: pointer; }
+        .total-section { margin-top: 20px; font-size: 1.2em; font-weight: bold; }
+        .action-buttons { margin-top: 15px; }
+        .action-buttons button { margin-right: 10px; }
         @media print {
-            .input-row, .remove-btn, button, .total-row button { display: none !important; }
-            .header, .container, .bill-table { box-shadow: none; }
-            body { background: #fff; }
+            .no-print { display: none !important; }
         }
     </style>
 </head>
 <body>
-    <div class="header">Dokan: Your Digital Dukaan</div>
-    <div class="container">
-        <div class="input-row">
-            <input type="text" id="customerName" placeholder="Enter customer name">
-            <button onclick="addItemRow()">+ Add Item</button>
-        </div>
-        <table class="bill-table" id="billTable">
-            <thead>
-                <tr>
-                    <th>S.No</th>
-                    <th>Item</th>
-                    <th>Qty</th>
-                    <th>Price (₹)</th>
-                    <th>Stock</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="billBody">
-                <!-- Rows will be added here -->
-            </tbody>
-        </table>
-        <div class="total-row">
-            Total: ₹<span id="billTotal">0.00</span>
-            <button style="margin-left:20px;" onclick="generateBill()">Generate Bill</button>
-            <button style="margin-left:10px;" onclick="window.print()">🖨️ Print Bill</button>
-            <button style="margin-left:10px;" onclick="downloadInventory()">Download Inventory CSV</button>
-        </div>
+    <h1>Billing</h1>
+    <a href="/logout">Logout</a>
+
+    <div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 20px;" class="no-print">
+        <h3>New Bill</h3>
+        <input type="text" id="customerName" class="form-control" placeholder="Customer Name">
+        <button class="btn-primary" onclick="addItemRow()">+ Add Item</button>
+    </div>
+
+    <table id="billTable">
+        <thead>
+            <tr>
+                <th>S.No</th>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price (₹)</th>
+                <th>Stock</th>
+                <th class="no-print">Action</th>
+            </tr>
+        </thead>
+        <tbody id="billBody">
+            <!-- Rows will be added here -->
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        Total: ₹<span id="billTotal">0.00</span>
+    </div>
+
+    <div class="action-buttons no-print">
+        <button class="btn-primary" onclick="generateBill()">Generate Bill</button>
+        <button class="btn-primary" onclick="window.print()">🖨️ Print Bill</button>
+        <button class="btn-primary" onclick="downloadInventory()">Download Inventory CSV</button>
     </div>
     <script>
         // Load inventory from backend API
@@ -135,7 +135,7 @@
             let actCell = row.insertCell(5);
             let rmBtn = document.createElement('button');
             rmBtn.innerText = "✖";
-            rmBtn.className = "remove-btn";
+            rmBtn.className = "btn-danger";
             rmBtn.onclick = function() {
                 tbody.removeChild(row);
                 updateRowNumbers();
