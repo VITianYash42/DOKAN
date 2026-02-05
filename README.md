@@ -127,6 +127,18 @@ Simple authentication flow for users to securely access the application.
 
 ---
 
+## 🔒 Input Validation & Security
+
+Dokan features a **centralized validation layer** that ensures data integrity and prevents errors:
+
+* ✅ **Comprehensive input validation** for all user inputs
+* 🛡️ **CSV injection prevention** to protect data files
+* 📋 **User-friendly error messages** with clear feedback
+* 🎯 **Type checking** and range validation for numeric fields
+* 🚫 **Zero 500 errors** from malformed input
+
+---
+
 ## 🚀 Tech Stack
 
 | Layer         | Technology                                  |
