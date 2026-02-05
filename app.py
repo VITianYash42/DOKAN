@@ -7,8 +7,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from validators import ValidationError, validate_inventory_item, sanitize_for_csv
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+
+# Inject the Secret Key securely (No longer hardcoded!)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+# Inject the Database URL securely
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+
 db = SQLAlchemy(app)
 
 CSV_FILE = 'data/inventory.csv'
