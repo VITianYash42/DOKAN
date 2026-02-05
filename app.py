@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from validators import ValidationError, validate_inventory_item, sanitize_for_csv
+from cache_utils import SimpleCache
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -13,6 +14,9 @@ db = SQLAlchemy(app)
 
 CSV_FILE = 'data/inventory.csv'
 TRANSACTIONS_FILE = 'data/transactions.csv'
+
+# --- Cache Setup ---
+cache = SimpleCache()
 
 # --- 1. Login Setup ---
 login_manager = LoginManager()
@@ -125,6 +129,7 @@ def inventory():
                 flash(f"Product '{item['name']}' updated successfully!", "success")
 
             write_csv(CSV_FILE, data)
+            cache.invalidate_all() # Invalidate cache on update
             return redirect(url_for('inventory'))
 
         except ValidationError as e:
@@ -152,10 +157,12 @@ def delete_item(item_id):
     data = read_csv(CSV_FILE)
     data = [item for item in data if item['id'] != item_id]
     write_csv(CSV_FILE, data)
+    cache.invalidate_all() # Invalidate cache on delete
     return redirect(url_for('inventory'))
 
 @app.route('/dashboard')
 @login_required
+@cache.cached(ttl=60)
 def dashboard():
     items = read_csv(CSV_FILE)
     
@@ -281,6 +288,8 @@ def api_checkout():
         # Append new transactions
         transactions.extend(new_transactions)
         write_csv(TRANSACTIONS_FILE, transactions)
+        
+        cache.invalidate_all() # Invalidate cache on new transaction
         
         return jsonify({
             'success': True, 
