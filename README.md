@@ -73,6 +73,50 @@ Dokan offers a modern, intuitive platform that simplifies operations:
   
 ---
 
+## 📸 Screenshots & UI Walkthrough
+
+The following screenshots provide a visual walkthrough of Dokan’s core features and interface.
+They represent the current UI and reference layout of the application.
+
+---
+
+### 📊 Dashboard Overview
+Provides an overview of sales forecasting, inventory health, and smart product recommendations.
+
+![Dashboard](screenshots/dashboard.png)
+
+---
+
+### 🧾 Billing / POS Interface
+Allows shop owners to generate bills, manage items, and download inventory data easily.
+
+![Billing](screenshots/billing.png)
+
+---
+
+### 📦 Inventory Management
+Manage products, stock levels, pricing, suppliers, and expiry dates from a single interface.
+
+![Inventory](screenshots/inventory.png)
+
+---
+
+### 🗣 Customer Feedback & Sentiment
+Analyze customer feedback to understand sentiment and improve business decisions.
+
+![Feedback](screenshots/feedback.png)
+
+---
+
+### 🔐 Authentication (Login & Register)
+Simple authentication flow for users to securely access the application.
+
+![Login](screenshots/login.png)
+
+![Register](screenshots/register.png)
+
+---
+
 ## 👨‍💻 My Role & Contributions
 
 - Designed and implemented the Flask backend architecture
@@ -80,6 +124,18 @@ Dokan offers a modern, intuitive platform that simplifies operations:
 - Integrated AI modules for analytics and prediction
 - Handled CSV-based data management using Pandas
 - Built and connected frontend templates with backend APIs
+
+---
+
+## 🔒 Input Validation & Security
+
+Dokan features a **centralized validation layer** that ensures data integrity and prevents errors:
+
+* ✅ **Comprehensive input validation** for all user inputs
+* 🛡️ **CSV injection prevention** to protect data files
+* 📋 **User-friendly error messages** with clear feedback
+* 🎯 **Type checking** and range validation for numeric fields
+* 🚫 **Zero 500 errors** from malformed input
 
 ---
 

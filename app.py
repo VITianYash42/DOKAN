@@ -1,25 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import csv
+from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-import os
-import sys
-from dotenv import load_dotenv
-
-# --- SECURITY: 12-Factor Configuration Loading ---
-# Load environment variables from .env file
-load_dotenv()
-
-# --- SECURITY: Fail-Safe Assertion Layer ---
-# This ensures the app CRASHES immediately if critical secrets are missing
-# preventing "silent failures" in production.
-required_secrets = ['SECRET_KEY', 'DATABASE_URL']
-for secret in required_secrets:
-    if not os.getenv(secret):
-        sys.stderr.write(f"CRITICAL SECURITY ERROR: Missing environment variable '{secret}'.\n")
-        sys.stderr.write("Application refusal to start: Credential leakage prevention.\n")
-        sys.exit(1)
+from validators import ValidationError, validate_inventory_item, sanitize_for_csv
 
 app = Flask(__name__)
 
@@ -32,6 +17,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 db = SQLAlchemy(app)
 
 CSV_FILE = 'data/inventory.csv'
+TRANSACTIONS_FILE = 'data/transactions.csv'
 
 # --- 1. Login Setup ---
 login_manager = LoginManager()
@@ -113,36 +99,47 @@ def inventory():
     items = read_csv(CSV_FILE)
 
     if request.method == 'POST':
-        # Validation Logic
         try:
-            stock = int(request.form['stock'])
-            price = float(request.form['price'])
-            if stock < 0 or price < 0:
-                return "Error: Stock and Price cannot be negative! <a href='/inventory'>Go Back</a>"
-        except ValueError:
-            return "Error: Invalid number format!"
+            # Validate all inventory item fields
+            validated_item = validate_inventory_item(request.form)
 
-        item = {
-            'id': request.form['id'],
-            'name': request.form['name'],
-            'category': request.form['category'],
-            'stock': stock,
-            'price': price,
-            'expiry_date': request.form['expiry_date'],
-            'supplier': request.form['supplier']
-        }
+            # Sanitize values for CSV storage
+            item = {
+                'id': sanitize_for_csv(validated_item['id']),
+                'name': sanitize_for_csv(validated_item['name']),
+                'category': sanitize_for_csv(validated_item['category']),
+                'stock': sanitize_for_csv(validated_item['stock']),
+                'price': sanitize_for_csv(validated_item['price']),
+                'expiry_date': sanitize_for_csv(validated_item['expiry_date']),
+                'supplier': sanitize_for_csv(validated_item['supplier'])
+            }
 
-        # Edit/Update Logic
-        data = read_csv(CSV_FILE)
-        for i, row in enumerate(data):
-            if row['id'] == item['id']:
-                data[i] = item  # Update existing
-                break
-        else:
-            data.append(item)   # Add new
-        
-        write_csv(CSV_FILE, data)
-        return redirect(url_for('inventory'))
+            # Edit/Update Logic
+            data = read_csv(CSV_FILE)
+            updated = False
+            for i, row in enumerate(data):
+                if row['id'] == item['id']:
+                    data[i] = item  # Update existing
+                    updated = True
+                    break
+
+            if not updated:
+                data.append(item)  # Add new
+                flash(f"Product '{item['name']}' added successfully!", "success")
+            else:
+                flash(f"Product '{item['name']}' updated successfully!", "success")
+
+            write_csv(CSV_FILE, data)
+            return redirect(url_for('inventory'))
+
+        except ValidationError as e:
+            flash(e.message, "error")
+            items = read_csv(CSV_FILE)
+            return render_template('inventory.html', items=items, edit_item=None)
+        except Exception as e:
+            flash("An unexpected error occurred. Please try again.", "error")
+            items = read_csv(CSV_FILE)
+            return render_template('inventory.html', items=items, edit_item=None)
 
     # Render with empty edit_item for normal view
     return render_template('inventory.html', items=items, edit_item=None)
@@ -165,12 +162,140 @@ def delete_item(item_id):
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    return "Dashboard Placeholder"  # Simplified for now
+    items = read_csv(CSV_FILE)
+    
+    # Initialize with empty default values
+    sales_forecast = {}
+    stockout_predictions = []
+    suggestions = []
+    
+    # Try to load AI insights (optional - graceful degradation if dependencies missing)
+    try:
+        from ai.sales_forecast import predict_sales
+        sales_forecast = predict_sales(items)
+    except (ImportError, Exception) as e:
+        flash(f"Sales forecast unavailable: {str(e)}", "warning")
+    
+    try:
+        from ai.stockout_predictor import predict_stockout
+        stockout_predictions = predict_stockout(items)
+    except (ImportError, Exception) as e:
+        flash(f"Stockout predictions unavailable: {str(e)}", "warning")
+    
+    try:
+        from ai.recommender import recommend_products
+        suggestions = recommend_products(items)
+    except (ImportError, Exception) as e:
+        flash(f"Product recommendations unavailable: {str(e)}", "warning")
+    
+    return render_template('dashboard.html', 
+                         items=items,
+                         sales_forecast=sales_forecast,
+                         stockout_predictions=stockout_predictions,
+                         suggestions=suggestions)
 
 @app.route('/billing')
 @login_required
 def billing():
-    return "Billing Placeholder"
+    return render_template('billing.html')
+
+@app.route('/feedback', methods=['GET', 'POST'])
+@login_required
+def feedback():
+    sentiment = None
+    if request.method == 'POST':
+        feedback_text = request.form.get('feedback', '').strip()
+        if feedback_text:
+            try:
+                from ai.sentiment_analyzer import analyze_feedback
+                sentiment = analyze_feedback(feedback_text)
+            except (ImportError, Exception) as e:
+                flash(f"Sentiment analysis unavailable: {str(e)}", "warning")
+                sentiment = "Unable to analyze (missing dependencies)"
+    
+    return render_template('feedback.html', sentiment=sentiment)
+
+@app.route('/api/inventory')
+@login_required
+def api_inventory():
+    """API endpoint to get inventory data for billing page"""
+    items = read_csv(CSV_FILE)
+    return jsonify(items)
+
+
+@app.route('/api/checkout', methods=['POST'])
+@login_required
+def api_checkout():
+    """
+    API endpoint to process checkout:
+    - Updates inventory.csv (decreases stock)
+    - Logs sale in transactions.csv
+    """
+    try:
+        data = request.get_json()
+        items = data.get('items', [])
+        customer_name = data.get('customer_name', 'Unknown')
+        
+        if not items:
+            return jsonify({'success': False, 'error': 'No items in cart'}), 400
+        
+        # Read current inventory
+        inventory = read_csv(CSV_FILE)
+        
+        # Validate stock availability first
+        for cart_item in items:
+            item_id = str(cart_item.get('id'))
+            qty = int(cart_item.get('qty', 0))
+            
+            inv_item = next((i for i in inventory if str(i['id']) == item_id), None)
+            if not inv_item:
+                return jsonify({'success': False, 'error': f'Item ID {item_id} not found'}), 400
+            
+            if int(inv_item['stock']) < qty:
+                return jsonify({'success': False, 'error': f'Not enough stock for {inv_item["name"]}'}), 400
+        
+        # Generate new transaction ID
+        transactions = read_csv(TRANSACTIONS_FILE)
+        if transactions:
+            max_trans_id = max(int(t['transaction_id']) for t in transactions)
+            new_trans_id = max_trans_id + 1
+        else:
+            new_trans_id = 1
+        
+        # Update inventory and create transaction records
+        new_transactions = []
+        for cart_item in items:
+            item_id = str(cart_item.get('id'))
+            qty = int(cart_item.get('qty', 0))
+            
+            # Update inventory stock
+            for inv_item in inventory:
+                if str(inv_item['id']) == item_id:
+                    inv_item['stock'] = int(inv_item['stock']) - qty
+                    break
+            
+            # Add transaction record (one per item in the bill)
+            new_transactions.append({
+                'transaction_id': new_trans_id,
+                'item_id': item_id
+            })
+        
+        # Write updated inventory
+        write_csv(CSV_FILE, inventory)
+        
+        # Append new transactions
+        transactions.extend(new_transactions)
+        write_csv(TRANSACTIONS_FILE, transactions)
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Checkout successful',
+            'transaction_id': new_trans_id
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     with app.app_context():
