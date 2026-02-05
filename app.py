@@ -80,13 +80,17 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        
         if User.query.filter_by(username=username).first():
+            logger.warning(f"Registration attempt failed: User '{username}' already exists.")
             return "User already exists! <a href='/register'>Try again</a>"
         
         new_user = User(username=username)
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
+        
+        logger.info(f"New user registered: {username}")
         return redirect(url_for('login'))
     return render_template('register.html')
 
@@ -96,17 +100,22 @@ def login():
         username = request.form['username']
         password = request.form['password']
         user = User.query.filter_by(username=username).first()
+        
         if user and user.check_password(password):
             login_user(user)
             # CHANGED: Redirect to 'inventory' instead of 'dashboard'
             return redirect(url_for('inventory'))
+        
+        logger.warning(f"Failed login attempt for user: {username}")
         return "Invalid credentials! <a href='/login'>Try again</a>"
     return render_template('login.html')
 
 @app.route('/logout')
 @login_required
 def logout():
+    user = current_user.username
     logout_user()
+    logger.info(f"User logged out: {user}")
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
