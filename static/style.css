@@ -104,3 +104,66 @@ button {
 button:hover {
   background-color: #e6b800;
 }
+
+/* Flash Messages */
+.flash-messages {
+  margin: 20px auto;
+  max-width: 800px;
+}
+
+.flash-message {
+  padding: 15px 40px 15px 15px;
+  margin: 10px 0;
+  border-radius: 5px;
+  position: relative;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.flash-success {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+}
+
+.flash-error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.flash-warning {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+}
+
+.flash-info {
+  background-color: #d1ecf1;
+  border: 1px solid #bee5eb;
+  color: #0c5460;
+}
+
+.flash-close {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.5;
+  padding: 0;
+  width: auto;
+  min-width: 20px;
+  max-width: 30px;
+  margin: 0;
+}
+
+.flash-close:hover {
+  opacity: 1;
+  background: transparent;
+}
