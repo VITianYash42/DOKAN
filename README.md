@@ -73,6 +73,50 @@ Dokan offers a modern, intuitive platform that simplifies operations:
   
 ---
 
+## 📸 Screenshots & UI Walkthrough
+
+The following screenshots provide a visual walkthrough of Dokan’s core features and interface.
+They represent the current UI and reference layout of the application.
+
+---
+
+### 📊 Dashboard Overview
+Provides an overview of sales forecasting, inventory health, and smart product recommendations.
+
+![Dashboard](screenshots/dashboard.png)
+
+---
+
+### 🧾 Billing / POS Interface
+Allows shop owners to generate bills, manage items, and download inventory data easily.
+
+![Billing](screenshots/billing.png)
+
+---
+
+### 📦 Inventory Management
+Manage products, stock levels, pricing, suppliers, and expiry dates from a single interface.
+
+![Inventory](screenshots/inventory.png)
+
+---
+
+### 🗣 Customer Feedback & Sentiment
+Analyze customer feedback to understand sentiment and improve business decisions.
+
+![Feedback](screenshots/feedback.png)
+
+---
+
+### 🔐 Authentication (Login & Register)
+Simple authentication flow for users to securely access the application.
+
+![Login](screenshots/login.png)
+
+![Register](screenshots/register.png)
+
+---
+
 ## 👨‍💻 My Role & Contributions
 
 - Designed and implemented the Flask backend architecture
