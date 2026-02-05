@@ -1,52 +1,68 @@
+import sqlite3
 import pandas as pd
-from collections import defaultdict
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+import os
 
+# 1. Define Database Path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, 'instance', 'dokan.db')
 
-def recommend_products(items):
-    # Load transactions data
-    transactions = pd.read_csv('data/transactions.csv')
+def recommend_products(product_name):
+    """
+    Recommends similar products based on Name and Category using TF-IDF.
+    """
+    try:
+        # 2. Connect to Database and fetch Inventory
+        conn = sqlite3.connect(DB_PATH)
+        # We need the product name and category to find similarities
+        df = pd.read_sql_query("SELECT * FROM product", conn)
+        conn.close()
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        return []
 
-    # Convert all item_ids to strings for consistent comparison
-    transactions['item_id'] = transactions['item_id'].astype(str)
-    item_pairs = defaultdict(int)
+    if df.empty:
+        return []
 
-    # Build co-occurrence counts
-    for transaction_id, group in transactions.groupby('transaction_id'):
-        item_list = sorted(group['item_id'].tolist())
-        for i in range(len(item_list)):
-            for j in range(i + 1, len(item_list)):
-                pair = (item_list[i], item_list[j])
-                item_pairs[pair] += 1
+    # 3. Preprocessing
+    # Ensure text columns are strings and fill missing values
+    df['name'] = df['name'].fillna('')
+    df['category'] = df['category'].fillna('')
+    
+    # Create a 'content' column combining name and category for better matching
+    df['content'] = df['name'] + ' ' + df['category']
 
-    recommendations = []
+    # 4. TF-IDF Vectorization
+    tfidf = TfidfVectorizer(stop_words='english')
+    tfidf_matrix = tfidf.fit_transform(df['content'])
 
-    # Build a map of item id to name once to avoid repetition
-    id_to_name = {str(item['id']): item['name'] for item in items}
+    # 5. Calculate Cosine Similarity
+    cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
 
-    # Loop through each item in the input
-    for item in items:
-        item_id = str(item['id'])  # ensure consistent type
-        related = {}
+    # 6. Find the index of the product matching the input name
+    # We use lowercase for case-insensitive matching
+    # Create a mapping of Name -> Index
+    indices = pd.Series(df.index, index=df['name'].str.lower()).drop_duplicates()
+    
+    product_name_lower = product_name.lower()
+    
+    if product_name_lower not in indices:
+        return []
 
-        # Find all pairs that include this item
-        for (a, b), count in item_pairs.items():
-            if a == item_id:
-                related[b] = count
-            elif b == item_id:
-                related[a] = count
+    idx = indices[product_name_lower]
 
-        # Sort related items by count (descending)
-        sorted_related = sorted(related.items(), key=lambda x: x[1], reverse=True)
+    # Get similarity scores for this product
+    sim_scores = list(enumerate(cosine_sim[idx]))
 
-        # If no recommendations found, show a default recommendation
-        if not sorted_related:
-            recommended_items = ["Try adding more items to get recommendations."]
-        else:
-            recommended_items = [id_to_name[r[0]] for r in sorted_related[:3]]  # Top 3 recommendations
+    # Sort the products based on similarity scores
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
 
-        recommendations.append({
-            'item': id_to_name[item_id],
-            'recommended_items': recommended_items
-        })
+    # Get the scores of the 3 most similar products (ignoring itself at index 0)
+    sim_scores = sim_scores[1:4]
 
-    return recommendations
+    # Get the product indices
+    product_indices = [i[0] for i in sim_scores]
+
+    # Return the names of the recommended products
+    return df['name'].iloc[product_indices].tolist()
